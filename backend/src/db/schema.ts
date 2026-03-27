@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, pgEnum, jsonb } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -73,9 +73,61 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
+
+export const messageRoleEnum = pgEnum("message_role", ["USER", "ASSISTANT"]);
+export const messageTypeEnum = pgEnum("message_type", ["RESULT", "ERROR"]);
+
+
+export const project = pgTable("project", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+})
+
+export const message=pgTable("message",{
+   id: text("id").primaryKey(),
+  content: text("content").notNull(),
+  role: messageRoleEnum("role").notNull(),
+  type: messageTypeEnum("type").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+})
+export const fragment = pgTable("fragment" , {
+  id: text("id").primaryKey(),
+  messageId: text("message_id")
+    .notNull()
+    .unique()
+    .references(() => message.id, { onDelete: "cascade" }),
+
+  sandboxUrl: text("sandbox_url").notNull(),
+  title: text("title").notNull(),
+  files: jsonb("files").$type<unknown>().notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+})
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  projects:many(project),
+ 
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -89,5 +141,21 @@ export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
+  }),
+}));
+export const messageRelations = relations(message , ({one})=>({
+  project:one(project , {
+     fields: [message.projectId],
+    references: [project.id],
+  }),
+  fragment:one(fragment , {
+    fields:[message.id],
+    references:[fragment.messageId]
+  })
+}))
+export const fragmentRelations = relations(fragment, ({ one }) => ({
+  message: one(message, {
+    fields: [fragment.messageId],
+    references: [message.id],
   }),
 }));

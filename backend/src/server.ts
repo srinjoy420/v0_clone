@@ -1,7 +1,9 @@
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import express, { Request, Response } from "express";
 import { auth } from "./lib/auth.js";
+
 import dotenv from "dotenv";
+import projectRouter from "./routes/projects.routes.js";
 dotenv.config();
 
 const app = express();
@@ -27,7 +29,7 @@ app.get("/api/me", async (req, res) => {
     });
 	return res.json(session);
 });
-
+app.use("/api/projets",projectRouter)
 app.listen(PORT, () => {
   console.log(`app is running on http://localhost:${PORT}`);
 });
