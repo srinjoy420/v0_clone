@@ -8,6 +8,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 8080;
+app.use(express.json());
 
 // Global middleware - no path filter
 app.use("/api/auth/{*any}", (req, _res, next) => {
@@ -29,7 +30,7 @@ app.get("/api/me", async (req, res) => {
     });
 	return res.json(session);
 });
-app.use("/api/projets",projectRouter)
+app.use("/api/projects",projectRouter)
 app.listen(PORT, () => {
   console.log(`app is running on http://localhost:${PORT}`);
 });

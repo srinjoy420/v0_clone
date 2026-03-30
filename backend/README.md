@@ -163,3 +163,35 @@ Test endpoints:
 ---
 
 If you want, I can also clean up the existing code to replace all `DATABASE_URl` usages with `DATABASE_URL` automatically.
+
+
+------ the relations https://claude.ai/share/3822aee1-3d9f-4f26-9ad3-21679300bad9
+Looking at your schema, fragment is the rich output that gets attached to an assistant message — basically the generated code/app result that gets displayed in a sandbox/preview window.
+Think of it this way: when your AI chat generates a working app or code, you need somewhere to store that output. That's what fragment is.
+Here's what each field does:
+
+export const fragment = pgTable("fragment", {
+  id: text("id").primaryKey(),
+
+  messageId: text("message_id")
+    .unique()              // ← one message can only have ONE fragment
+    .references(() => message.id, { onDelete: "cascade" }),
+
+  sandboxUrl: text("sandbox_url").notNull(),  // the iframe/preview URL
+  title: text("title").notNull(),             // e.g. "Todo App", "Calculator"
+  files: jsonb("files").notNull(),            // the actual generated files
+})
+```
+
+So the full picture of one AI response looks like this:
+```
+message (role: ASSISTANT, type: RESULT)
+    └── fragment
+            ├── sandboxUrl  → "https://sandbox.e2b.dev/xyz"  (iframe preview)
+            ├── title       → "Todo App"
+            └── files       → {
+                                "index.html": "<html>...",
+                                "style.css": "body { ... }",
+                                "app.js": "const todos = ..."
+                              }
+
