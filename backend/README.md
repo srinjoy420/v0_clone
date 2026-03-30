@@ -150,6 +150,50 @@ Test endpoints:
 - Better Auth routes under `http://localhost:8080/api/auth/*`
 - `GET http://localhost:8080/api/me` (session check)
 
+## Projects API (create/update/delete/get projects)
+
+All project routes are mounted under `base path: /api/projects` (see `backend/src/server.ts`).
+Every route uses the Better Auth `authenticate` middleware (`backend/src/middleware/auth.middleware.ts`), so requests must include a valid session.
+
+### Routes
+
+- `POST /api/projects/create-project`
+- `GET /api/projects/allprojects`
+- `GET /api/projects/project/:id`
+- `DELETE /api/projects/delete/:id`
+- `PUT /api/projects/update/:id`
+
+### Controller and route files
+
+- Controller: `backend/src/controller/project.controller.ts`
+- Routes: `backend/src/routes/projects.routes.ts`
+
+### Request/response details
+
+- `POST /api/projects/create-project`
+  - Body: `{ "content": string }`
+  - Uses `req.user.id` (session user id)
+  - Creates a new row in `project` (project `name` is auto-generated with `generateSlug()`)
+  - Also creates an initial `message` row linked to the project with `role: "USER"` and `type: "RESULT"`
+  - Response: returns the created `project`
+
+- `GET /api/projects/allprojects`
+  - Uses `req.user.id`
+  - Response: `{ message: "projects found succesfulluy", projects: [...] }`
+
+- `GET /api/projects/project/:id`
+  - Uses `req.user.id` + `req.params.id`
+  - Response: the project rows for that id/user
+
+- `DELETE /api/projects/delete/:id`
+  - Uses `req.user.id` + `req.params.id`
+  - Response: `{ message: "project deleted successfully" }`
+
+- `PUT /api/projects/update/:id`
+  - Body: `{ "name": string }`
+  - Uses `req.user.id` + `req.params.id`
+  - Response: `{ message: "project updated successfully", updateProject: ... }`
+
 ## Folder + file order (quick reference)
 
 1. `backend/.env`
@@ -157,41 +201,12 @@ Test endpoints:
 3. `backend/src/db/index.ts`
 4. `backend/src/db/schema.ts`
 5. `backend/src/lib/auth.ts`
-6. `backend/src/server.ts`
-7. `backend/drizzle/*` (generated migrations)
+6. `backend/src/middleware/auth.middleware.ts`
+7. `backend/src/controller/project.controller.ts`
+8. `backend/src/routes/projects.routes.ts`
+9. `backend/src/server.ts`
+10. `backend/drizzle/*` (generated migrations)
 
 ---
 
 If you want, I can also clean up the existing code to replace all `DATABASE_URl` usages with `DATABASE_URL` automatically.
-
-
------- the relations https://claude.ai/share/3822aee1-3d9f-4f26-9ad3-21679300bad9
-Looking at your schema, fragment is the rich output that gets attached to an assistant message — basically the generated code/app result that gets displayed in a sandbox/preview window.
-Think of it this way: when your AI chat generates a working app or code, you need somewhere to store that output. That's what fragment is.
-Here's what each field does:
-
-export const fragment = pgTable("fragment", {
-  id: text("id").primaryKey(),
-
-  messageId: text("message_id")
-    .unique()              // ← one message can only have ONE fragment
-    .references(() => message.id, { onDelete: "cascade" }),
-
-  sandboxUrl: text("sandbox_url").notNull(),  // the iframe/preview URL
-  title: text("title").notNull(),             // e.g. "Todo App", "Calculator"
-  files: jsonb("files").notNull(),            // the actual generated files
-})
-```
-
-So the full picture of one AI response looks like this:
-```
-message (role: ASSISTANT, type: RESULT)
-    └── fragment
-            ├── sandboxUrl  → "https://sandbox.e2b.dev/xyz"  (iframe preview)
-            ├── title       → "Todo App"
-            └── files       → {
-                                "index.html": "<html>...",
-                                "style.css": "body { ... }",
-                                "app.js": "const todos = ..."
-                              }
-
