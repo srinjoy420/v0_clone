@@ -4,9 +4,11 @@ import { message, project } from "../db/schema.js";
 import { randomUUID } from "node:crypto"
 import { generateSlug } from "random-word-slugs";
 import { and, eq } from "drizzle-orm";
+import { inngest } from "../integration/inngest/client.js";
 export const createProject = async (req: Request, res: Response) => {
     try {
         const { content } = req.body
+        // @ts-ignore
         const userId = req.user.id;
 
 
@@ -24,6 +26,13 @@ export const createProject = async (req: Request, res: Response) => {
             projectId: newProject.id
         })
         //todod :background jobs
+        await inngest.send({
+            name:"code-agent/run",
+            data:{
+                projectId:newProject.id,
+                value:content
+            }
+        })
 
         return res.status(200).json(newProject)
     } catch (error) {
@@ -71,6 +80,7 @@ export const getProjectById = async (req: Request, res: Response) => {
         const projectData = await db
             .select()
             .from(project)
+            // @ts-ignore
             .where(
                 and(
                     eq(project.id, id),
